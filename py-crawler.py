@@ -39,6 +39,7 @@ class Crawler():
 		self.rootUrl = splitted.netloc
 		self.base = f'{splitted[0]}://{splitted[1]}'
 		self.rfp = robots.RobotsParser.from_uri(f'{self.base}/robots.txt')
+		self.session = requests.Session()
 		self.workers = workers
 		self.timeout = timeout
 		self.max = m
@@ -46,6 +47,7 @@ class Crawler():
 		self.q = queue.Queue()
 		self.uniqueLinks = set()
 		self.linksLock = threading.Lock()
+		self.hashset = set()
 
 		self.count = 0
 		self.addLink(url)
@@ -57,14 +59,14 @@ class Crawler():
 				self.uniqueLinks.add(link)
 				self.q.put(link)
 		self.count = len(self.uniqueLinks)
-		print(self.count)
+		# print(self.count)
 		self.linksLock.release() # запись в множество занимает относительно мало времени
 		# можно принебречь
 
 	def crawlUrl(self, url):
 		if self.rfp.can_fetch('*', url):
 			try:
-				text = requests.get(url, timeout=self.timeout).text
+				text = self.session.get(url, timeout=self.timeout).text
 				links = Page(text, self.base).links
 				self.addLink(*links)
 			except:
