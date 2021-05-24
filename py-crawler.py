@@ -1,24 +1,22 @@
 import threading
 import queue
-import requests
 from urllib.parse import urlsplit
+from xml.dom import minidom
+import requests
 import bs4
 import robots # в urllib.robotparser есть баги
 # с ними не выйдет, например, распарсить google.com/robots.txt
 import xml.etree.cElementTree as Tree
-from xml.dom import minidom
 
 import time
 import argparse
 
-st = time.time()
-
 
 
 class Page():
-	def __init__(self, text, base):
+	def __init__(self, text, base, scheme):
 		self.base = base
-		self.text = text
+		self.scheme = scheme
 		self.soup = bs4.BeautifulSoup(text, 'html.parser')
 		self.links = self.findLinks()
 
@@ -28,7 +26,7 @@ class Page():
 			href = i.get('href')
 			if href:
 				if href.startswith('//'):
-					href = self.base + '://' + href[2:]
+					href = self.scheme + '://' + href[2:]
 				res.add(href if urlsplit(href)[1] else self.base+href)
 		return res
 
@@ -59,7 +57,7 @@ class Crawler():
 				self.uniqueLinks.add(link)
 				self.q.put(link)
 		self.count = len(self.uniqueLinks)
-		# print(self.count)
+		print(self.count)
 		self.linksLock.release() # запись в множество занимает относительно мало времени
 		# можно принебречь
 
@@ -67,7 +65,7 @@ class Crawler():
 		if self.rfp.can_fetch('*', url):
 			try:
 				text = self.session.get(url, timeout=self.timeout).text
-				links = Page(text, self.base).links
+				links = Page(text, self.base, self.scheme).links
 				self.addLink(*links)
 			except:
 				pass
@@ -111,8 +109,11 @@ def main():
 	ap.add_argument('-m', '--max', metavar='M', type=int, default=0, help='maximum count of pages to crawl')
 	args = ap.parse_args()
 
-
-	c = Crawler(args.url, args.workers, args.timeout, args.max, args.outfile)
+	url = args.url
+	if urlsplit(url).scheme == '':
+		url = 'http://'+url
+	print('Парсинг', url)
+	c = Crawler(url, args.workers, args.timeout, args.max, args.outfile)
 	s = time.time()
 	c.run()
 	print('Затрачено времени:', time.time()-s)
