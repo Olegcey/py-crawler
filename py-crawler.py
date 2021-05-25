@@ -57,7 +57,7 @@ class Crawler():
 				self.uniqueLinks.add(link)
 				self.q.put(link)
 		self.count = len(self.uniqueLinks)
-		print(self.count)
+		# print(self.count)
 		self.linksLock.release() # запись в множество занимает относительно мало времени
 		# можно принебречь
 
